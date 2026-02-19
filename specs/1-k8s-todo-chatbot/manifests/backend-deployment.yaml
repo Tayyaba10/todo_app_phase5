@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-chatbot-backend
+  namespace: todo-chatbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-chatbot-backend
+  template:
+    metadata:
+      labels:
+        app: todo-chatbot-backend
+    spec:
+      containers:
+      - name: backend
+        image: todo-chatbot-backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: todo-chatbot-config
+              key: DATABASE_URL
+        - name: PYTHON_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: todo-chatbot-config
+              key: PYTHON_ENV
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-chatbot-secrets
+              key: JWT_SECRET
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: todo-chatbot-secrets
+              key: BETTER_AUTH_SECRET
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

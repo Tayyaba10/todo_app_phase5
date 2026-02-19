@@ -1,0 +1,127 @@
+# Local development values for the Todo Chatbot application
+# Assumes images are already built and available in the local Minikube Docker environment
+
+# Backend configuration
+backend:
+  enabled: true
+  image:
+    repository: todo-backend  # Make sure this matches your built image name
+    pullPolicy: Never  # For local development, use "Never" to use local images
+    tag: "latest"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  containerPort: 8000
+  env:
+    - name: DATABASE_URL
+      value: "sqlite:///./todo.db"  # Local SQLite database
+    - name: PYTHONPATH
+      value: "/app/src"
+    - name: ENVIRONMENT
+      value: "development"
+  # Resources for local development (lower limits)
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Frontend configuration
+frontend:
+  enabled: true
+  image:
+    repository: todo-frontend  # Make sure this matches your built image name
+    pullPolicy: Never  # For local development, use "Never" to use local images
+    tag: "latest"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3000
+  containerPort: 3000
+  env:
+    - name: NEXT_PUBLIC_API_BASE_URL
+      value: "http://todo-app-backend:8000"  # Internal Kubernetes service URL
+    - name: NODE_ENV
+      value: "development"
+  # Resources for local development (lower limits)
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Service Account configuration
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# Pod Security Context
+podSecurityContext:
+  fsGroup: 1001
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  # readOnlyRootFilesystem: false  # Allow writes for development
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+
+# Ingress configuration for local development
+ingress:
+  enabled: true
+  className: "nginx"  # Assuming nginx ingress controller is installed in Minikube
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: todo-app.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: todo-app-backend
+              port:
+                number: 8000
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: todo-app-frontend
+              port:
+                number: 3000
+  tls: []
+  # - secretName: todo-app-tls
+  #   hosts:
+  #     - todo-app.local
+
+# Disable autoscaling for local development
+backend:
+  autoscaling:
+    enabled: false
+
+frontend:
+  autoscaling:
+    enabled: false
+
+# Node selection for local development (optional)
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,121 @@
+
+# Todo App Deployment Notes (Docker, Minikube, Kubernetes, Helm)
+
+This guide provides step-by-step instructions for deploying a full-stack Todo application using Docker, Minikube, Kubernetes, and Helm, along with common troubleshooting tips.
+
+## 1. Docker Image Build Steps
+
+### Backend Image
+Navigate to your backend application directory (e.g., `backend-service/`).
+
+```bash
+docker build -t todo-backend:v1 .
+```
+
+### Frontend Image
+Navigate to your frontend application directory (e.g., `frontend-service/`).
+
+```bash
+docker build -t todo-frontend:v1 .
+```
+
+## 2. Loading Images into Minikube
+
+After building your Docker images, load them into the Minikube Docker daemon so Kubernetes can find them.
+
+```bash
+# Point your terminal to the Minikube Docker daemon
+eval $(minikube docker-env)
+
+# Load backend image
+docker load -i todo-backend.tar # If you have a tar file
+# OR, if you built it directly in minikube's docker env
+docker tag todo-backend:v1 todo-backend:v1
+
+# Load frontend image
+docker load -i todo-frontend.tar # If you have a tar file
+# OR, if you built it directly in minikube's docker env
+docker tag todo-frontend:v1 todo-frontend:v1
+
+# Switch back to your local Docker daemon (optional, if you need to work with local Docker again)
+eval $(minikube docker-env -u)
+```
+
+## 3. Helm Install and Upgrade Commands
+
+Helm is used to manage Kubernetes applications. Make sure you are in the directory containing your Helm chart (e.g., `todo-app-chart/`).
+
+### Install the application
+
+```bash
+helm install todo-app ./todo-app-chart -f ./todo-app-chart/values.yaml
+```
+
+### Upgrade the application (after making changes to your Helm chart or images)
+
+```bash
+helm upgrade todo-app ./todo-app-chart -f ./todo-app-chart/values.yaml
+```
+
+## 4. Common Errors and Fixes
+
+### Error: ImagePullBackOff
+
+**Cause:** Kubernetes cannot pull the Docker image. This often happens when the image is not found in the Minikube Docker daemon or there's a typo in the image name.
+
+**Fixes:**
+1.  **Verify Image in Minikube:** Ensure the image is loaded correctly into Minikube's Docker daemon. Rerun `eval $(minikube docker-env)` and `docker images` to check.
+2.  **Correct Image Name:** Double-check the image name and tag in your Kubernetes deployment configuration (e.g., `values.yaml` for Helm).
+
+### Error: CrashLoopBackOff due to missing environment variables
+
+**Cause:** Your application (e.g., backend) is crashing shortly after starting because it's missing required environment variables (e.g., database connection string).
+
+**Fixes:**
+1.  **Check Pod Logs:** Use `kubectl logs <pod-name>` to see the exact error message indicating missing environment variables.
+2.  **Update Helm Chart:** Add or correct the environment variables in your Helm chart's `values.yaml` or directly in the deployment manifest.
+3.  **Upgrade Helm Release:** Run `helm upgrade` to apply the changes.
+
+### Error: Minikube cluster unreachable
+
+**Cause:** The Minikube cluster might not be running or your `kubectl` context is not set correctly.
+
+**Fixes:**
+1.  **Start Minikube:** Run `minikube start`.
+2.  **Set Kubectl Context:** Run `minikube kubectl -- get pods` to ensure `kubectl` is pointing to the Minikube cluster. Or `kubectl config use minikube`.
+
+## 5. Commands to Check Pods, Logs, and Services
+
+### Check Pods
+
+```bash
+kubectl get pods
+```
+
+### View Pod Logs (replace `<pod-name>` with the actual pod name)
+
+```bash
+kubectl logs <pod-name>
+```
+
+### Check Services
+
+```bash
+kubectl get services
+```
+
+### Check Deployments
+
+```bash
+kubectl get deployments
+```
+
+## 6. How to Access the Frontend Using Minikube Service
+
+To access your frontend application deployed in Minikube, you need to expose its service. Replace `<frontend-service-name>` with the actual name of your frontend service in Kubernetes.
+
+```bash
+minikube service <frontend-service-name>
+```
+
+This command will open the frontend application in your default web browser.
